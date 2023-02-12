@@ -1,0 +1,299 @@
+openapi: 3.0.2
+info:
+  title: FEUDO Assurance Middleware
+  description: FEUDO Assurance APIs, used to interact with DAGs and DB
+  contact:
+    name: Automation Portal Support
+    email: aportal_support@telecomitalia.it
+  version: 1.1.0
+servers:
+  - url: http://172.23.170.109:9400/spidermid/v1
+    description: Production server
+  - url: http://172.22.253.209:9400/spidermid/v1
+    description: PVV server
+  - url: http://163.162.8.186:9400/spidermid/v1
+    description: Testing server
+tags:
+  - name: workflow
+    description: Workflow services
+  - name: data
+    description: Data services
+security:
+  - bearerAuth: []
+paths:
+  /data/getCompleteResponse/{area}/{runid}:
+    get:
+      tags:
+      - data
+      summary: Return response from a DAG-run
+      description: |
+       Return a json containing the complete response data collected 
+       by a FEUDO Assurance DAG-run
+      operationId: getCompleteResponse
+      parameters:
+        - $ref: "#/components/parameters/areaPathParam"
+        - $ref: "#/components/parameters/runidPathParam"
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              explode: false
+              schema:
+                type: string
+        '404':
+          description: Not found
+        '500':
+          $ref: "#/components/responses/InternalServerError"
+  /workflow/start/{area}/{dagname}:
+    post:
+      tags:
+        - workflow
+      summary: Start an Airflow DAG
+      description: Start an Airflow DAG from the Assurance Basic collection
+      operationId: startDag
+      parameters:
+        - $ref: "#/components/parameters/areaPathParam"
+        - $ref: "#/components/parameters/dagnamePathParam"
+      requestBody:
+        description: Dag run parameters
+        content:
+          application/json:
+            schema:
+              type: object
+              oneOf:
+                - $ref: '#/components/schemas/CertNodeDown'
+                - $ref: '#/components/schemas/AssuranceBasicMain'
+                - $ref: '#/components/schemas/AssuranceBasicStorico'
+                - $ref: '#/components/schemas/AssuranceBasicCommerciale'
+                - $ref: '#/components/schemas/AssuranceRoamingItz'
+            examples:
+              CertNodeDown:
+                $ref: '#/components/examples/CertNodeDown-example'
+              AssuranceBasicMain:
+                $ref: '#/components/examples/UtenzaMobile-example'
+              AssuranceBasicStorico:
+                $ref: '#/components/examples/AssuranceBasicStorico-example'
+              AssuranceBasicCommerciale:
+                $ref: '#/components/examples/UtenzaMobile-example'
+              AssuranceRoamingItz:
+                $ref: '#/components/examples/UtenzaMobile-example'
+        required: true
+      responses:
+        '201':
+          description: DAG successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dagRunDetails'
+              examples:
+                dagRunDetails-example:
+                  $ref: "#/components/examples/dagRunDetails-example2"
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              explode: false
+              schema:
+                type: string
+        '500':
+          $ref: "#/components/responses/InternalServerError"
+  /workflow/state/{area}/{dagname}/{runid}:
+    get:
+      tags:
+        - workflow
+      summary: Return state from a DAG-run
+      description: Get the state of the DAG-run identified by dagname and runid
+      operationId: getDagRunState
+      parameters:
+        - $ref: "#/components/parameters/areaPathParam"
+        - $ref: "#/components/parameters/dagnamePathParam"
+        - $ref: "#/components/parameters/runidPathParam"
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dagRunDetails'
+              examples:
+                dagRunDetails-example:
+                  $ref: "#/components/examples/dagRunDetails-example"
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              explode: false
+              schema:
+                type: string
+              style: simple
+        '404':
+          description: Not found
+        '500':
+          $ref: "#/components/responses/InternalServerError"
+components:
+  parameters:
+    areaPathParam:
+      name: area
+      description: context area of running dag
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [ActiveAssurance, AssuranceBasic]
+    runidPathParam:
+      name: runid
+      description: id of a dag instance
+      in: path
+      required: true
+      schema:
+        type: string
+    dagnamePathParam:
+      name: dagname
+      description: name of dag to execute
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/dagname'
+  schemas:
+    dagname:
+      type: string
+      enum: 
+        - certificazione_node_down
+        - assurance_basic_main
+        - assurance_basic_storico
+        - assurance_basic_commerciale
+        - assurance_roaming_internazionale
+        - hlr_user_status
+        - ims_association_tab
+        - mme_checklog_tab
+        - mme_printout_tab
+        - msc_subdata_tab
+        - mtas_cat_ass_tab
+        - sapc_user_status
+    dagRunDetails:
+      type: object
+      properties:
+        end_date:
+          type: string
+          format: date-time
+          nullable: true
+        execution_date:
+          type: string
+          format: date-time
+          nullable: true
+        run_id:
+          type: string
+        run_on_demand:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+          nullable: true
+        state:
+          type: string
+    CertNodeDown:
+      type: object
+      properties:
+        alarmId: 
+          type: string
+        resource: 
+          type: object
+          properties:
+            modello:
+              type: string
+            NomeRisorsa: 
+              type: string
+            ResourceName: 
+              type: string
+            ResourceType:
+              type: string
+            OriginalResource: 
+              type: string
+            Porta:
+              type: string
+          required: [NomeRisorsa]
+      required: [alarmId, resource]
+    UtenzaMobile:
+      type: object
+      properties:
+        utenza: 
+          type: string
+          pattern: '^msisdn:\+393[0-9]{9}'
+      required: [utenza]
+    AssuranceBasicMain:
+      allOf:
+        - $ref: '#/components/schemas/UtenzaMobile'
+    AssuranceBasicStorico:
+      allOf:
+        - $ref: '#/components/schemas/UtenzaMobile'
+      type: object
+      properties:
+        frome: 
+          type: string
+          format: date-time
+          nullable: true
+        to:
+          type: string
+          format: date-time
+          nullable: true
+      required: [frome, to]
+    AssuranceBasicCommerciale:
+      allOf:
+        - $ref: '#/components/schemas/UtenzaMobile'
+    AssuranceRoamingItz:
+      allOf:
+        - $ref: '#/components/schemas/UtenzaMobile'
+  responses:
+    InternalServerError:
+      description: |
+        An error occured while processing the request.
+        Please contact aportal_support@telecomitalia.it
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      x-bearerInfoFunc: swagger_server.controllers.authorization_controller.check_bearerAuth
+  examples:
+    CertNodeDown-example:
+      value: 
+        alarmId: EFMBB;6389af82062721000195ebe5
+        resource:
+          modello: ASR907
+          NomeRisorsa: rfage009.cdn.interbusiness.it
+          ResourceName: rfage009.cdn.interbusiness.it
+          ResourceType: APPARATO
+          OriginalResource: OPM
+          Porta: IPTV_GENOVA
+    UtenzaMobile-example:
+      value:
+        utenza: msisdn:+393351234567
+    AssuranceBasicStorico-example: 
+      value: 
+        utenza: msisdn:+393351234567
+        frome: 2022-11-24 00:58:00
+        to: 2022-11-24 15:58:00
+    dagRunDetails-example:
+      value:
+        end_date: 2022-11-21T09:30:45.498109+00:00
+        execution_date: 2022-11-19T16:06:16.671522+00:00
+        run_id: nodedown_runondemand_1668873976.504276
+        run_on_demand: 'True'
+        start_date: 2022-11-21T09:30:44.611769+00:00
+        state: success
+    dagRunDetails-example2:
+      value:
+        end_date: null
+        execution_date: 2022-12-14T12:17:04.837550+00:00
+        run_id: spidermite_runondemand_1671020224.523417
+        run_on_demand: 'True'
+        start_date: null
+        state: queued
+    
