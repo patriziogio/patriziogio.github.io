@@ -7,11 +7,7 @@ info:
     email: aportal_support@telecomitalia.it
   version: 1.1.0
 servers:
-  - url: http://172.23.170.109:9400/spidermid/v1
-    description: Production server
-  - url: http://172.22.253.209:9400/spidermid/v1
-    description: PVV server
-  - url: http://163.162.8.186:9400/spidermid/v1
+  - url: http://development.testing-server.com:9400/middleware/v1
     description: Testing server
 tags:
   - name: workflow
